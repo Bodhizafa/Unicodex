@@ -1,7 +1,624 @@
 <!DOCTYPE html>
 <head>
-<title>The Unicodex</title>
+    <meta charset="utf-8">
+    <title>The Unicodex</title>
+    <style>
+	@font-face {
+		font-family:"unscii16";
+		src: url("/Fonts/unscii-16.woff") format("woff"),
+			 url("/Fonts/unscii-16.ttf") format("ttf");
+	}
+	@font-face {
+		font-family:"AdobeBlank";
+		src: url("/Fonts/AdobeBlank.ttf.woff") format("woff"),
+			 url("/Fonts/AdobeBlank.ttf") format("ttf");
+	}
+	body {
+		background-color: #222;
+		color: #EEE;
+		font-family: "unscii16", monospace;
+	}
+	button,select,input {
+		background-color: #222;
+		border: 2px solid #EEE;
+		color: orange;
+		outline: none;
+		font-family: "unscii16";
+		font-size: 16px;
+		border-radius: 4px;
+		padding: .5em;
+		margin: .25em;
+	}
+	select {
+		height: 2em;
+	}
+	#tableContainer {
+    	font-family:"unscii16", "AdobeBlank";
+		font-size: 16px;
+		cursor: pointer;
+	}
+	#tableContainer td {
+		margin: 0;
+		border: 0;
+		padding: .5em;
+		text-align: center;
+		vertical-align: center;
+		border: 2px solid transparent;
+		border-radius: 4px;
+	}
+	#tableContainer td.active {
+		border-color: #EEE;
+	}
+    #tableContainer td.empty {
+        background-color: darkred;
+    }
+	#tableContainer td:hover {
+		background-color: orange;
+		color: black;
+	}
+	#output {
+		padding: .5em;
+		white-space: pre;
+		min-height: 2em;
+		border: 2px solid #EEE;
+		border-radius: 4px;
+		margin: .25em;
+	}
+	.cpinput {
+		width: 8ex;
+	}
+	#glyphTest .cell{
+		width: 2em;
+		height:2em;
+		overflow: hidden;
+		display: inline-block;
+	}
+
+	#progress {
+		display: inline-block;
+		min-width: 5ex;
+	}
+	#speed {
+		display: inline-block;
+		min-width: 7ex;
+		text-align: right;
+	}
+    </style>
+    <script>
+"use strict";
+// Callback demultiplexer
+let Multifinish = function(finish) {
+    let calls = 1;
+    let that = this;
+    this.join = function() {
+        calls--;
+        if (calls == 0) {
+            finish()
+        }
+    };
+    this.split = function() {
+        calls++;
+        return that.join;
+    };
+};
+function parseLine(line) {
+	let parts = line.split('#');
+	let data = parts.shift();
+	let comment;
+	if (data === '') {
+		return null;
+	}
+	let ret = {
+		'fields': data.split(';').map(function(s) { return s.trim()}),
+		'comment': null
+	}
+	if (parts.length === 1) {
+		ret.comment = parts.shift().trim();
+	} else if (parts.length > 1) {
+		ret.comment = parts.join('#').trim();
+	}
+	return ret;
+}
+function lineParser(lp) {
+	return function(file) {
+		file.split('\n').forEach(function(rawLine) {
+			let line = parseLine(rawLine);
+			if (line === null || line.fields === null) {
+				return;
+			};
+			lp(line);
+		});
+	}
+}
+function expandRange(str) {
+	let cps = []
+	if (str.indexOf('..') > 0) {
+		let se = str.split('..');
+		let s = parseInt(se[0], 16);
+		let e = parseInt(se[1], 16);
+		for (let cp = s; cp <= e; cp++) { // UCD ranges are inclusive
+			cps.push(cp);
+		}
+	} else {
+		cps.push(parseInt(str, 16));
+	}
+	return cps;
+}
+let parsePropList = lineParser(function(line) {
+	let fields = line.fields;
+	expandRange(line.fields[0]).forEach(function(cp) {
+		let data = data_by_codepoint[cp];
+		if (data !== undefined) { // PropList references some CPs that aren't in UnicodeData AFAICT
+			data.Properties.push(line.fields[1]);
+		} else {
+			//console.info("Reference to nonexistant condepoint", cp);
+		}
+	});
+})
+let data_by_codepoint = [];
+let files_by_name = {};
+let parsers = [
+	{
+		"file": "UnicodeData",
+		"parse": function(rawFile) {
+			let lines = rawFile.split('\n');
+			let rawLine = lines.shift();
+			while(rawLine !== undefined) {
+				let line = parseLine(rawLine);
+				if (line === null || line.fields === null) {
+					return;
+				}
+				let fields = line.fields;
+				let name = fields[1][0] === '<' ? null : fields[1];
+				let codepoint = parseInt(fields[0], 16);
+				let copies = 1;
+				if (fields[1].indexOf(', First') >= 0) {
+					let rawEndLine = lines.shift();
+					let endLine = parseLine(rawEndLine);
+					let endFields = endLine.fields;
+					if (endFields[1].indexOf(', Last') < 0) {
+						console.error("UnicodeData range doesn't end?", rawLine, rawEndLine);
+						throw "e";
+					}
+					let endCodepoint = parseInt(endFields[0], 16);
+					copies = endCodepoint - codepoint + 1; // Inclusive ranges
+				}
+				for(let i = 0; i < copies; i++) {
+					let um = parseInt(fields[12], 16);
+					let lm = parseInt(fields[13], 16);
+					let tm = parseInt(fields[14], 16);
+					let data = {
+						"Codepoint": (codepoint + i).toString(16),
+						"Aliases": name === null ? [] : [name],
+						"Name": name,
+						"General_Category": fields[2],
+						"Canonical_Combining_Class": fields[3],
+						"Bidi_Class": fields[4],
+						"Decomposition_Type": fields[5],
+						"Numeric_Value": fields[8],
+						"Properties": [],
+						"Simple_Uppercase_Mapping": isNaN(um) ? null : um,
+						"Simple_Lowercase_Mapping": isNaN(lm) ? null : lm,
+						"Simple_Titlecase_Mapping": isNaN(tm) ? null : tm,
+					}
+					if (fields[9] == 'Y') {
+						data.Properties.push('Bidi_Mirrored');
+					}
+					data_by_codepoint[codepoint + i] = data;
+				}
+				rawLine = lines.shift();
+			}
+		}
+	}, {
+		"file": "NameAliases",
+		"parse": lineParser(function(line) {
+			let fields = line.fields;
+			let data = data_by_codepoint[parseInt(fields[0], 16)];
+			if (fields[2] == 'control' && data.Name == null) {
+				data.Name = fields[1];
+			}
+			data.Aliases.push(fields[1]);
+		})
+	}, {
+		"file": "PropList",
+		"parse": parsePropList
+	}, {
+		"file": "Blocks",
+		"parse": parsePropList
+	}
+]
+function parse() { // Called once files_by_name is completely populated
+	console.info("Loaded Files");
+	parsers.forEach(function(desc) {
+		desc.parse(files_by_name[desc.file])
+		console.info("Parsed ", desc.file);
+	})
+	files_by_name = null; // woo, RAM
+	begin();
+}
+
+function loadUCD(name, cb) {
+	let xhr = new XMLHttpRequest();
+	xhr.open("GET", "UCD9/" + name + ".txt")
+	xhr.responseType = 'text';
+	xhr.addEventListener('load', function(e) {
+		files_by_name[name] = this.response;
+		cb();
+	});
+	xhr.send();
+	console.info("Requested", name);
+}
+document.addEventListener('DOMContentLoaded', function(e) {
+	let mf = new Multifinish(parse);
+	parsers.forEach(function(desc) {
+		loadUCD(desc.file, mf.split())
+	});
+	mf.join();
+});
+let cps;
+function begin () { // Called once data is parsed/organized
+	console.info("Data loaded");
+	let $table = document.createElement('table');
+	let $dtable = document.createElement('table');
+	let idx = 0;
+	let cells = [];
+	let dcells_by_prop = {};
+	function sortCps() {
+		cps.sort(function(a, b) { return a - b; });
+	}
+	cps = Object.keys(data_by_codepoint).map(function(i) {return parseInt(i);});
+	sortCps();
+	for (let row = 0; row < 0x10; row++) {
+		let $row = document.createElement('tr');
+		for (let col = 0; col < 0x10; col++) {
+			let $cell = document.createElement('td');
+			$cell.appendChild(document.createElement('span'));
+			$cell.dataset.cp = null;
+			$cell.dataset.idx = idx;
+			idx += 1;
+			cells.push($cell);
+			$row.appendChild($cell);
+		}
+		$table.appendChild($row);
+	}
+	idx = 0;
+	// Generate glyph blacklist (probably only works for unscii,
+	// I suspect this will give lots of false positives for fonts with actual combining characters:
+	function renderData(cp_or_e) {
+		let cp = parseInt(cp_or_e)
+		if (isNaN(cp)) { // make it work as an event listener too
+			cp = parseInt(this.dataset.cp);
+		}
+		let data = data_by_codepoint[cp]
+		Object.keys(data).forEach(function(prop) {
+			if (prop === 'Name') {
+				return;
+			}
+			let $dcell;
+			if (dcells_by_prop[prop] === undefined) {
+				let $row = document.createElement('tr');
+				let $propcell = document.createElement('td');
+				$propcell.textContent = prop;
+				$dcell = document.createElement('td');
+				$dcell.dataset.prop = prop;
+				$row.appendChild($propcell);
+				$row.appendChild($dcell);
+				$dtable.appendChild($row);
+				dcells_by_prop[prop] = $dcell;
+			} else {
+				$dcell = dcells_by_prop[prop];
+			}
+			$dcell.textContent = data[prop];
+		});
+	};
+	let $output = document.getElementById('output');
+	let $outputLen = document.getElementById('outputLen');
+    let output = [];
+    function renderOutput() {
+        $output.textContent = output.join('');
+        $outputLen.textContent = output.length;
+    }
+	function addToOutput() {
+		let cp = parseInt(this.dataset.cp);
+        output.push(String.fromCodePoint(cp));
+        renderOutput();
+	};
+	cells.forEach(function($cell) {
+		$cell.addEventListener('click', function() {
+			cells.forEach(function($cell) {
+				$cell.className = '';
+			})
+			$cell.className = 'active';
+		})
+		$cell.addEventListener('click', renderData);
+		$cell.addEventListener('click', addToOutput);
+	});
+	let $n = document.getElementById('n');
+	let $nHex = document.getElementById('nHex');
+	let $last = document.getElementById('last');
+	let $skip = document.getElementById('skip');
+	let $start = document.getElementById('start');
+	function renderTable() {
+		$skip.value = '0x' + idx.toString('16');
+        if (cps[idx] === undefined) {
+    		$start.value = '';
+        } else {
+    		$start.value = '0x' + cps[idx].toString('16');
+        }
+		$n.textContent = cps.length;
+		$nHex.textContent = cps.length.toString(16);
+		if (cps.length) {
+			$last.textContent = cps[cps.length-1].toString(16);
+		} else {
+			$last.textContent = '-'
+		}
+		cells.forEach(function($cell) {
+			let cp = cps[parseInt($cell.dataset.idx) + idx];
+			if (cp !== undefined) {
+				$cell.textContent = String.fromCodePoint(cp);
+				$cell.dataset.cp = cp;
+                $cell.className = '';
+			}  else {
+                $cell.className = 'empty';
+                $cell.textContent = '';
+				$cell.dataset.cp = 0;
+			}
+		});
+	}
+	document.getElementById('tableContainer').appendChild($table);
+	document.getElementById('dataContainer').appendChild($dtable);
+	// Output controls
+	document.getElementById('clear').addEventListener('click', function(e) {
+		output = [];
+        renderOutput();
+	});
+    function promptOutput() {
+        let str = output.join('');
+        let newStr = window.prompt("?", str)
+        if (newStr === null) {
+            return null;
+        }
+        let newOutput = [];
+        for (let c = 0; c < newStr.length; c++) {
+            newOutput.push(newStr.charAt(c));
+        };
+        console.info("Prompted", output, str, "=>", newOutput, newStr);
+        return newOutput;
+    }
+	document.getElementById('prompt').addEventListener('click', function(e) {
+        let str = output.join('');
+        let newStr = window.prompt("...", str);
+        let newOutput = [];
+        if (newStr === null) {
+            return;
+        }
+        for (let c = 0; c < newStr.length; c++) {
+            newOutput.push(newStr.charAt(c));
+        };
+        console.info("Prompted", output, str, "=>", newOutput, newStr);
+        output = newOutput;
+        renderOutput();
+	});
+	document.getElementById('backspace').addEventListener('click', function(e) {
+		output.pop();
+		renderOutput();
+	});
+	// Table controls
+	document.getElementById('prev').addEventListener('click', function(e) {
+		idx = Math.max(idx - 0x100, 0);
+		renderTable();
+	});
+	document.getElementById('next').addEventListener('click', function(e) {
+		idx = Math.min(idx + 0x100, Math.max(cps.length - 0x100, 0));
+		renderTable();
+	});
+	document.getElementById('skip').addEventListener('change', function(e) {
+		let newIdx = parseInt(this.value);
+        if (isNaN(newIdx)) {
+            return;
+        }
+        idx = newIdx;
+		renderTable();
+	});
+	document.getElementById('start').addEventListener('change', function(e) {
+		let goal = parseInt(this.value);
+        if (isNaN(goal)) {
+            return;
+        }
+		for (let newidx = 0; newidx < cps.length; newidx++) {
+			if (cps[newidx] >= goal) {
+				break;
+			}
+		}
+		if (newidx > cps.length) {
+			return;
+		}
+		idx = newidx;
+		renderTable();
+	});
+	function propListFilter(prop, haystack, needle) { // prop = name of a unicode property that is a list of strings in data
+													 // haystack = set of CPs to search through
+													 // needle = string we're substring matching against
+		let cps = haystack.filter(function(cp) {
+			let data = data_by_codepoint[cp];
+			let l = data[prop]
+			let n = l.length;
+			for (let i = 0; i < n; i++) {
+				if (l[i].indexOf(needle) >= 0) {
+					return true;
+				}
+			}
+			return false;
+		}).map(function(str) { return parseInt(str)});
+		return cps;
+	};
+	document.getElementById('narrow').addEventListener('click', function(e) {
+		let alias = document.getElementById('alias').value;
+		let prop = document.getElementById('prop').value;
+		cps = propListFilter(prop, cps, alias);
+		idx = 0;
+		renderTable();
+	});
+	document.getElementById('widen').addEventListener('click', function(e) {
+		let alias = document.getElementById('alias').value;
+		let prop = document.getElementById('prop').value;
+		let newcps = propListFilter(prop, Object.keys(data_by_codepoint), alias);
+		let set = {};
+		newcps.forEach(function(cp) {set[cp] = true;});
+		cps.forEach(function(cp) {set[cp] = true;});
+		cps = Object.keys(set).map(function(s) {return parseInt(s)});
+		idx = 0;
+		sortCps();
+		renderTable();
+	});
+	document.getElementById('reset').addEventListener('click', function(e) {
+		cps = Object.keys(data_by_codepoint);
+		idx = 0;
+		sortCps();
+		renderTable();
+	});
+	document.getElementsByTagName('body')[0].addEventListener('keydown', function(e) {
+		let input = false;
+		let inputs = {
+			"TEXTAREA": true,
+			"INPUT": true
+		};
+		e.path.forEach(function($node) {
+			if (inputs[$node.nodeName]) {
+				input = true;
+			}
+		});
+		if (input) {
+			return;
+		}
+		console.log(e);
+		if (e.controlKey || e.metaKey) {
+			return;
+		} else if (e.key == 'Enter') {
+			output.push('\n');
+		} else if (e.key == 'Backspace') {
+            output.pop();
+		} else if (e.key.length == 1) {
+            output.push(e.key.charAt(0));
+		} else {
+			return;
+		}
+        renderOutput();
+	});
+	renderTable();
+    renderOutput();
+	// Glyph analyzer. Might not work with combining characters.
+	let testIdx = 0;
+	let $progress = document.getElementById('progress');
+	let $speed = document.getElementById('speed');
+	let progress = function() {
+		let complete = 0;
+		let total = cps.length;
+		let startTime = (new Date()).getTime();
+		let lastTime = startTime
+		let lastComplete = 0;
+		let avg;
+		return function(n) {
+			if (n === undefined) {
+				n = 1;
+			}
+			complete += n;
+			if (Math.round(lastComplete / total * 1000) != Math.round((complete) / total * 1000)) {
+				let now = (new Date()).getTime();
+				$progress.textContent = Math.round((complete) / total * 1000) / 10
+				if (avg === undefined) {
+					avg = complete;
+				} else {
+					avg = avg * .7 + .3 * ((complete - lastComplete) / (now - lastTime) * 1000) // msec
+				}
+				$speed.textContent = Math.round(avg);
+				lastTime = now;
+				lastComplete = complete;
+			}
+		}
+	}();
+	let allcps = cps
+	function checkGlyph(testedIdx, stride, $span, cb) {
+		let nextIdx = testedIdx + stride;
+		if ($span.offsetWidth != 0) {
+			data_by_codepoint[allcps[testedIdx]].Properties.push('Glyph');
+		}
+		if (nextIdx >= allcps.length) {
+			cb();
+			return;
+		}
+		$span.textContent = String.fromCodePoint(allcps[nextIdx]);
+		progress(1);
+		window.requestAnimationFrame(function() {
+			checkGlyph(nextIdx, stride, $span, cb);
+		});
+	};
+	const $glyphTest = document.getElementById('glyphTest');
+	const ntests = 0x40;
+	let $row;
+	let mf = new Multifinish(function() {
+		$glyphTest.style.display = 'none';
+	});
+	for (let i = 0; i < ntests; i++) {
+    	if (i % 0x10 === 0) {
+            if ($row) {
+                $glyphTest.appendChild($row);
+            }
+            $row = document.createElement('div');
+            $row.classList.add('row');
+    	}
+		let $span = document.createElement('span');
+		let $cell = document.createElement('div');
+		$cell.classList.add('cell')
+		$row.appendChild($cell);
+		$cell.appendChild($span);
+		$span.textContent = String.fromCodePoint(allcps[i]);
+		window.requestAnimationFrame(function(i, $span, join) {
+			return function() {
+				checkGlyph(i, ntests, $span, join);
+			};
+		}(i, $span, mf.split()));
+	}
+	$glyphTest.appendChild($row);
+	mf.join();
+}
+	</script>
 </head>
 <body>
-Test
+	<div id="output"></div>
+	<div id="controlContainer">
+    	<p>
+    		Output (<span id="outputLen"></span>):<button id="clear">Clear</button>
+    		<button id="prompt">Prompt</button>
+    		<button id="backspace">Backspace</button>
+		</p>
+		<p>
+    		Filter:<select id="prop">
+    			<option>Aliases</option>
+    			<option>Properties</option>
+    			<input type="text" id="alias" />
+    		</select>
+    		<button id="narrow">Narrow</button>
+    		<button id="widen">Widen</button>
+    		<button id="reset">Reset</button>
+		</p>
+		<p>
+        	<span id="n"></span> (0x<span id="nHex"></span>) Codepoints. Last: 0x<span id="last"></span>
+        </p>
+        <p>
+    		Glyph test: <span id="progress"></span>% <span id="speed"></span>/sec
+		</p>
+		<p>
+    		Skip:<input type="text" class="cpinput" id="skip" value="0" />
+    		Start:<input type="text" class="cpinput" id="start" value="0" />
+    		<button id="prev">Prev</button>
+    		<button id="next">Next</button>
+		</p>
+	</div>
+	<div id="tableContainer">
+    	<div id="glyphTest">
+    	</div>
+	</div>
+	<div id="dataContainer">
+	</div>
 </body>
