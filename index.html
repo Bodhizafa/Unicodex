@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!-- 
+----------------------------------------------------------------------------
+"THE BEER-WARE LICENSE" (Revision 42):
+<meernik@live.com> wrote this file.  As long as you retain this notice you
+can do whatever you want with this stuff. If we meet some day, and you think
+this stuff is worth it, you can buy me a beer in return.  Landon Meernik
+----------------------------------------------------------------------------
+-->
 <head>
     <meta charset="utf-8">
     <title>The Unicodex</title>
@@ -29,13 +37,13 @@
 		padding: .5em;
 		margin: .25em;
 	}
-	select {
-		height: 2em;
-	}
+    a  {
+        color: orange;
+    }
 	#tableContainer {
-    	font-family:"unscii16", "AdobeBlank";
 		font-size: 16px;
 		cursor: pointer;
+        font-family: initial;
 	}
 	#tableContainer td {
 		margin: 0;
@@ -63,6 +71,7 @@
 		border: 2px solid #EEE;
 		border-radius: 4px;
 		margin: .25em;
+        font-family: initial;
 	}
 	.cpinput {
 		width: 8ex;
@@ -365,7 +374,8 @@ function begin () { // Called once data is parsed/organized
 			}
 		});
 	}
-	document.getElementById('tableContainer').appendChild($table);
+	let $tableContainer = document.getElementById('tableContainer')
+    $tableContainer.appendChild($table);
 	document.getElementById('dataContainer').appendChild($dtable);
 	// Output controls
 	document.getElementById('clear').addEventListener('click', function(e) {
@@ -505,82 +515,114 @@ function begin () { // Called once data is parsed/organized
 		}
         renderOutput();
 	});
+    let $font = document.getElementById('font');
+    function changeFont(e) {
+        let nFont;
+        if ($font.value) {
+            nFont = $font.value + ',"AdobeBlank"';
+        } else {
+            nFont = "initial";
+        }
+        $tableContainer.style.fontFamily = nFont;
+        $output.style.fontFamily = nFont;
+    }
+    document.getElementById('change').addEventListener('click', changeFont);
+    let cancel = false;
+    let $cancel = document.getElementById('cancel')
+    let $test = document.getElementById('test')
+    $cancel.addEventListener('click', function() {
+        this.style.display = "none";
+        $test.style.display = "initial";
+        cancel = true;
+    });
+    $test.addEventListener('click', function() {
+        if ($font.value === '') {
+            alert("You must choose a font family to glyph test.");
+            return
+        }
+        changeFont();
+        this.style.display = "none";
+        $cancel.style.display = "initial";
+        cancel = false;
+        glyphTest()
+    });
 	renderTable();
     renderOutput();
-	// Glyph analyzer. Might not work with combining characters.
-	let testIdx = 0;
-	let $progress = document.getElementById('progress');
-	let $speed = document.getElementById('speed');
-	let progress = function() {
-		let complete = 0;
-		let total = cps.length;
-		let startTime = (new Date()).getTime();
-		let lastTime = startTime
-		let lastComplete = 0;
-		let avg;
-		return function(n) {
-			if (n === undefined) {
-				n = 1;
-			}
-			complete += n;
-			if (Math.round(lastComplete / total * 1000) != Math.round((complete) / total * 1000)) {
-				let now = (new Date()).getTime();
-				$progress.textContent = Math.round((complete) / total * 1000) / 10
-				if (avg === undefined) {
-					avg = complete;
-				} else {
-					avg = avg * .7 + .3 * ((complete - lastComplete) / (now - lastTime) * 1000) // msec
-				}
-				$speed.textContent = Math.round(avg);
-				lastTime = now;
-				lastComplete = complete;
-			}
-		}
-	}();
 	let allcps = cps
-	function checkGlyph(testedIdx, stride, $span, cb) {
-		let nextIdx = testedIdx + stride;
-		if ($span.offsetWidth != 0) {
-			data_by_codepoint[allcps[testedIdx]].Properties.push('Glyph');
-		}
-		if (nextIdx >= allcps.length) {
-			cb();
-			return;
-		}
-		$span.textContent = String.fromCodePoint(allcps[nextIdx]);
-		progress(1);
-		window.requestAnimationFrame(function() {
-			checkGlyph(nextIdx, stride, $span, cb);
-		});
-	};
-	const $glyphTest = document.getElementById('glyphTest');
-	const ntests = 0x40;
-	let $row;
-	let mf = new Multifinish(function() {
-		$glyphTest.style.display = 'none';
-	});
-	for (let i = 0; i < ntests; i++) {
-    	if (i % 0x10 === 0) {
-            if ($row) {
-                $glyphTest.appendChild($row);
+    function glyphTest() {
+        // Glyph analyzer. Might not work with combining characters.
+        let $progress = document.getElementById('progress');
+        let $speed = document.getElementById('speed');
+        let progress = function() {
+            let complete = 0;
+            let total = cps.length;
+            let startTime = (new Date()).getTime();
+            let lastTime = startTime
+            let lastComplete = 0;
+            let avg;
+            return function(n) {
+                if (n === undefined) {
+                    n = 1;
+                }
+                complete += n;
+                if (Math.round(lastComplete / total * 1000) != Math.round((complete) / total * 1000)) {
+                    let now = (new Date()).getTime();
+                    $progress.textContent = Math.round((complete) / total * 1000) / 10
+                    if (avg === undefined) {
+                        avg = complete;
+                    } else {
+                        avg = avg * .7 + .3 * ((complete - lastComplete) / (now - lastTime) * 1000) // msec
+                    }
+                    $speed.textContent = Math.round(avg);
+                    lastTime = now;
+                    lastComplete = complete;
+                }
             }
-            $row = document.createElement('div');
-            $row.classList.add('row');
-    	}
-		let $span = document.createElement('span');
-		let $cell = document.createElement('div');
-		$cell.classList.add('cell')
-		$row.appendChild($cell);
-		$cell.appendChild($span);
-		$span.textContent = String.fromCodePoint(allcps[i]);
-		window.requestAnimationFrame(function(i, $span, join) {
-			return function() {
-				checkGlyph(i, ntests, $span, join);
-			};
-		}(i, $span, mf.split()));
-	}
-	$glyphTest.appendChild($row);
-	mf.join();
+        }();
+        function checkGlyph(testedIdx, stride, $span, cb) {
+            let nextIdx = testedIdx + stride;
+            if ($span.offsetWidth != 0) {
+                data_by_codepoint[allcps[testedIdx]].Properties.push('Glyph');
+            }
+            if (nextIdx >= allcps.length || cancel) {
+                cb();
+                return;
+            }
+            $span.textContent = String.fromCodePoint(allcps[nextIdx]);
+            progress();
+            window.requestAnimationFrame(function() {
+                checkGlyph(nextIdx, stride, $span, cb);
+            });
+        };
+        const $glyphTest = document.getElementById('glyphTest');
+        const ntests = 0x40;
+        let $row;
+        let mf = new Multifinish(function() {
+            $glyphTest.innerHTML = '';
+        });
+        for (let i = 0; i < ntests; i++) {
+            if (i % 0x10 === 0) {
+                if ($row) {
+                    $glyphTest.appendChild($row);
+                }
+                $row = document.createElement('div');
+                $row.classList.add('row');
+            }
+            let $span = document.createElement('span');
+            let $cell = document.createElement('div');
+            $cell.classList.add('cell')
+            $row.appendChild($cell);
+            $cell.appendChild($span);
+            $span.textContent = String.fromCodePoint(allcps[i]);
+            window.requestAnimationFrame(function(i, $span, join) {
+                return function() {
+                    checkGlyph(i, ntests, $span, join);
+                };
+            }(i, $span, mf.split()));
+        }
+        $glyphTest.appendChild($row);
+        mf.join();
+    }
 }
 	</script>
 </head>
@@ -606,6 +648,10 @@ function begin () { // Called once data is parsed/organized
         	<span id="n"></span> (0x<span id="nHex"></span>) Codepoints. Last: 0x<span id="last"></span>
         </p>
         <p>
+            Font:<input type="text" id="font" value='' />
+            <button id="change">Change</button>
+            <button id="test">Test</button>
+            <button id="cancel" style="display: none">Cancel</button>
     		Glyph test: <span id="progress"></span>% <span id="speed"></span>/sec
 		</p>
 		<p>
@@ -621,4 +667,9 @@ function begin () { // Called once data is parsed/organized
 	</div>
 	<div id="dataContainer">
 	</div>
+    This page was made by <a href="http://sevin.lu">Landon Meernik</a> in 2017<br />
+    Data from the <a href="http://unicode.org">Unicode Consortium</a><br />
+    UI Font and inspiration from <a href="http://pelulamu.net/unscii/">Unscii</a> (try unscii16 in the font box ☺)<br />
+    Uses <a href="https://github.com/adobe-fonts/adobe-blank">Adobe Blank</a> for CSS trickery.<br />
+    Code, docs, and license at <a href="https://github.com/bodhizafa/Unicodex">github</a><br />
 </body>
