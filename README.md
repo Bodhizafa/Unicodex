@@ -21,10 +21,13 @@ By default, your browser's full font fallback is used. If you type in a specific
 'Next' and 'Prev' page through the current set of codepoints. 'Skip' is how far into the current set is being displayed, and 'Start' is the first codepoint being displayed. Both can be changed by entering a number and pressing enter.
 
 ##𝙒𝙝𝙮
-Originally this was built as an auxiliary utility to a hobby project, but turned out to be fun in its own right. Besides that, I was interested in doing a real-world study of javascript performance, and wanted to try to write an app that dealt with a reasonable amount of data and had no dependencies whatsoever. In building it, I deliberately avoided optimizing it at all on the first pass a naive implementation would be. Turns out it's more than usable. Currently it only supports a smallish subset of the actual Unicode Character Database (AFAICT there's no real cohesive way to slurp it all at once into a usable data structure [https://xkcd.com/1726/](https://xkcd.com/1726/), so parsers are being added as I find bits that exist in different parts of it useful)
+Originally this was built as an auxiliary utility to a hobby project, but turned out to be fun in its own right. Besides that, I was interested in doing a real-world study of javascript performance, and wanted to try to write an app that dealt with a reasonable amount of data and had no dependencies whatsoever. In building it, I deliberately avoided optimizing it at all on the first pass a naive implementation would be. Turns out it's more than usable. Currently it only supports a smallish subset of the actual Unicode Character Database (AFAICT there's no real cohesive way to slurp it all at once into a  [Reasonable data structure](https://xkcd.com/1726/), so parsers are being added as I find bits that exist in different parts of it useful)
 
-##ⓤⓒⓓ ⓛⓘⓒⓔⓝⓢⓔ
-The Unicode people say I should include this with any copies of their database (which this includes). 
+##ⓛⓘⓒⓔⓝⓢⓔ
+
+This project itself (index.html) is covered by the beer-ware license. See the source for details.
+Unscii is public domain, sourced from http://pelulamu.net/unscii/
+Adobe blank is covered by the SIL Open Font License, which can be found at their project page.
 
 This applies to the directory UCD9 in this project:
 
