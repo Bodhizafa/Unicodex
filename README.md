@@ -23,7 +23,7 @@ By default, your browser's full font fallback is used. If you type in a specific
 ##𝙒𝙝𝙮
 Originally this was built as an auxiliary utility to a hobby project, but turned out to be fun in its own right. Besides that, I was interested in doing a real-world study of javascript performance, and wanted to try to write an app that dealt with a reasonable amount of data and had no dependencies whatsoever. In building it, I deliberately avoided optimizing it at all on the first pass a naive implementation would be. Turns out it's more than usable. Currently it only supports a smallish subset of the actual Unicode Character Database (AFAICT there's no real cohesive way to slurp it all at once into a usable data structure [https://xkcd.com/1726/](https://xkcd.com/1726/), so parsers are being added as I find bits that exist in different parts of it useful)
 
-##ⓊⒸⒹ Ⓛⓘⓒⓔⓝⓢⓔ
+##ⓤⓒⓓ ⓛⓘⓒⓔⓝⓢⓔ
 The Unicode people say I should include this with any copies of their database (which this includes). 
 
 This applies to the directory UCD9 in this project:
