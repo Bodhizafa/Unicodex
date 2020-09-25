@@ -3,19 +3,26 @@ Build strings out of funny characters.
 
 ##𝑂𝑢𝑡𝑝𝑢𝑡
 Click characters (or just type on the keyboard, enter works for newlines too) to add them to the string shown at the top. 
+
 'Backspace' and 'Clear are exactly what they say on the tin.
+
 'Prompt' will bring up a modal which allows you to copy/paste or replace the content. 
+
 Note that if the string contains newlines, prompt will mangle them, and perhaps other characters. Behavior of strings in memory is a lot like the behavior of numbers on restaurant checks for large parties.
 
 ##𝓕𝓲𝓵𝓽𝓮𝓻
 There is always a current set of codepoints being displayed. 'Reset' sets this to the full set of codepoints in UnicodeData.txt, 
-'Narrow' reduces the set to only things that were in the set before, and match the filter. 
+
+'Narrow' reduces the set to only things that were in the set before and also match the filter. 
+
 'Widen' expands it to be things that were in the set before, plus those that match the filter from the full set.
-Filters can happen based on aliases or properties. Searches are a basic substring match and are case-insensitive, but properties and aliases follow pretty strict conventions, so if you don't find what you're looking for, trying the Title_Case version or the ALL CAPS version
+
+Filters can happen based on aliases or properties. Searches are a basic substring match and are case-sensitive, but properties. Aliases follow pretty strict conventions, so if you don't find what you're looking for, try searching in ALL_CAPS.
+
 You can filter based on properties or based on aliases (the actual name is added to the alias list as well), so for exmple filtering on alias LATIN will bring up most (all?) of the variously modified latin characters.
 
 ##𝔽𝕠𝕟𝕥
-By default, your browser's full font fallback is used. If you type in a specific font or font-family, only that will be used, and remaining characters will be blank rather than falling back to whatever the OS wants. Running the glyph test will iterate over all possible codepoints, render them, and check to see if the resultant box has width. If it does, that character will get the 'Glyph' property, so once the glyph test has completed, you can filter by Property = Glyph and only get characters that you can see. Unfortunately, combining characters that have no width will cause false-negatives. (note this does not work if no font is selected, because it appears to be impossible to add AdobeBlank at the _end_ of the default font fallback list, so fonts with no characters will be rendered as boxes, which have width, and sort of defeats the purpose.)
+By default, your browser's full font fallback is used. If you type in a specific font or font-family, only that will be used, and remaining characters will be blank rather than falling back to whatever the OS wants. Running the glyph test will iterate over all possible codepoints, render them, and check to see if the resultant box has width. If it does, that character will get the 'Glyph' property, so once the glyph test has completed, you can filter by Property = Glyph and only get characters that you can see. Unfortunately, combining characters that have no width will cause false-negatives. (note this does not work if no font is selected)
 
 ##𝚂𝚔𝚒𝚙
 'Next' and 'Prev' page through the current set of codepoints. 'Skip' is how far into the current set is being displayed, and 'Start' is the first codepoint being displayed. Both can be changed by entering a number and pressing enter.
@@ -26,10 +33,12 @@ Originally this was built as an auxiliary utility to a hobby project, but turned
 ##ⓛⓘⓒⓔⓝⓢⓔ
 
 This project itself (index.html) is covered by the beer-ware license. See the source for details.
-Unscii is public domain, sourced from http://pelulamu.net/unscii/
-Adobe blank is covered by the SIL Open Font License, which can be found at their project page.
 
-This applies to the directory UCD9 in this project:
+Unscii is public domain, sourced from http://pelulamu.net/unscii/
+
+Adobe blank is covered by the SIL Open Font License, which can be found at their project page at https://github.com/adobe-fonts/adobe-blank.
+
+The following applies to the directory UCD9 in this project:
 
 Copyright © 1991-2016 Unicode, Inc. All rights reserved.
 Distributed under the Terms of Use in http://www.unicode.org/copyright.html.
