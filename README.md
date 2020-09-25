@@ -1,7 +1,9 @@
 #𝔗𝔥𝔢 𝔘𝔫𝔦𝔠𝔬𝔡𝔢𝔵
+
 Build strings out of funny characters.
 
 ##𝑂𝑢𝑡𝑝𝑢𝑡
+
 Click characters (or just type on the keyboard, enter works for newlines too) to add them to the string shown at the top. 
 
 'Backspace' and 'Clear are exactly what they say on the tin.
@@ -11,6 +13,7 @@ Click characters (or just type on the keyboard, enter works for newlines too) to
 Note that if the string contains newlines, prompt will mangle them, and perhaps other characters. Behavior of strings in memory is a lot like the behavior of numbers on restaurant checks for large parties.
 
 ##𝓕𝓲𝓵𝓽𝓮𝓻
+
 There is always a current set of codepoints being displayed. 'Reset' sets this to the full set of codepoints in UnicodeData.txt, 
 
 'Narrow' reduces the set to only things that were in the set before and also match the filter. 
@@ -22,12 +25,15 @@ Filters can happen based on aliases or properties. Searches are a basic substrin
 You can filter based on properties or based on aliases (the actual name is added to the alias list as well), so for exmple filtering on alias LATIN will bring up most (all?) of the variously modified latin characters.
 
 ##𝔽𝕠𝕟𝕥
+
 By default, your browser's full font fallback is used. If you type in a specific font or font-family, only that will be used, and remaining characters will be blank rather than falling back to whatever the OS wants. Running the glyph test will iterate over all possible codepoints, render them, and check to see if the resultant box has width. If it does, that character will get the 'Glyph' property, so once the glyph test has completed, you can filter by Property = Glyph and only get characters that you can see. Unfortunately, combining characters that have no width will cause false-negatives. (note this does not work if no font is selected)
 
 ##𝚂𝚔𝚒𝚙
+
 'Next' and 'Prev' page through the current set of codepoints. 'Skip' is how far into the current set is being displayed, and 'Start' is the first codepoint being displayed. Both can be changed by entering a number and pressing enter.
 
 ##𝙒𝙝𝙮
+
 Originally this was built as an auxiliary utility to a hobby project, but turned out to be fun in its own right. Besides that, I was interested in doing a real-world study of javascript performance, and wanted to try to write an app that dealt with a reasonable amount of data and had no dependencies whatsoever. In building it, I deliberately avoided optimizing it at all on the first pass a naive implementation would be. Turns out it's more than usable. Currently it only supports a smallish subset of the actual Unicode Character Database (AFAICT there's no real cohesive way to slurp it all at once into a  [Reasonable data structure](https://xkcd.com/1726/), so parsers are being added as I find bits that exist in different parts of it useful)
 
 ##ⓛⓘⓒⓔⓝⓢⓔ
